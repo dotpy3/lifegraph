@@ -1,0 +1,20 @@
+{
+  "name": "lifegraph",
+  "homepage": "https://github.com/dotpy3/lifegraph",
+  "authors": [
+    "Eric Gourlaouen <gourlaoueneric@gmail.com>"
+  ],
+  "description": "",
+  "main": "index.html",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "^3.1.0"
+  }
+}
