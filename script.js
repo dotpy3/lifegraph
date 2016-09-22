@@ -6,7 +6,7 @@
 	*/
 	var regex = /<div\sclass="message_header"><span\sclass="user">(.{1,15}\b\s\b.{1,15}(?:\s.{1,15}){0,2})<\/span><span\sclass="meta">(.{1,10},\s\b.{1,10}\b\s\b\d{1,2},\s\b\d{4})/g
 	var dateRegex = /\w{5,15},\s(\w{3,15})\s\d{1,2},\s(\d{4})/g
-	var monthDateRegex = /(\w{4,15})\s(\d{4})/g
+	var monthDateRegex = /(\w{3,15})\s(\d{4})/g
 	var file = undefined
 	var months = {
 		'en': {
@@ -42,7 +42,7 @@
 
 	MonthDate.prototype.nextMonth = function () {
 		// Returns a MonthDate object of the month following this one
-		if (months[this.language].list.indexOf(this.month) === months[this.language].length) {
+		if (months[this.language].list.indexOf(this.month) === months[this.language].list.length - 1) {
 			// last month
 			return new MonthDate(months[this.language].list[0] + ' ' + new Number(this.year + 1).toString(), this.language)
 		} else {
@@ -68,8 +68,7 @@
 		reader.onload = function(e) {
 			var fileContent = e.target.result
 			docLog('File charged.')
-			var content = contentProcess(fileContent, n, l)
-			processGraph(content.values, content.dates, content.names)
+			executeController(fileContent, n, l)
 		}
 		docLog('Loading file in memory...')
 		reader.readAsText(f)
@@ -101,9 +100,12 @@
 		})
 		if (username) listOfMessages = listOfMessages.filter(function (mess) { return username.toUpperCase() !== mess[0].toUpperCase() })
 		docLog('List of messages parsed and filtered.')
+		var sortedMonthsList = monthList(listOfMessages, language)
+		console.log('sortedMonthsList')
+		console.log(sortedMonthsList)
 		return {
 			'values': listOfMessages,
-			'dates': monthList(listOfMessages, language),
+			'dates': sortedMonthsList,
 			'names': new Set(listOfMessages.map(function(m) { return m[0] }))
 		}
 	}
@@ -122,9 +124,16 @@
 
 	function sortMonthFunction (language) {
 		return function(val1, val2) {
-			var yearComparison = getYear(val1[1]) - getYear(val2[1])
-			var monthComparison = months[language].list.indexOf(getMonth(val1[1])) - months[language].list.indexOf(getMonth(val2[1]))
-			return yearComparison || monthComparison || 0
+			var yearComparison = getYear(val1) - getYear(val2)
+			if (yearComparison !== 0) {
+				return yearComparison
+			}
+			var monthComparison = months[language].list.indexOf(getMonth(val1)) - months[language].list.indexOf(getMonth(val2))
+			if (monthComparison !== 0) {
+				return monthComparison
+			} else {
+				return 0
+			}
 		}
 	}
 
@@ -137,30 +146,36 @@
 		*/
 
 		docLog('Sorting the messages...')
-		console.log(messages)
-		messages.sort(sortMonthFunction(language))
-		console.log(messages)
-		console.log(messages[0])
+		var monthsSet = new Set(messages.map(function(m) { return m[1] } ))
+		var monthsArray = Array.from(monthsSet)
+		monthsArray.sort(sortMonthFunction(language))
 		docLog('Generating a timeline...')
 		if (messages.length === 0) {
 			return []
 		} else {
-			var minMonth = messages[0][1]
-			console.log(minMonth)
+			var minMonth = monthsArray[0]
 			docLog('Identified first month.')
-			var maxMonth = messages[messages.length-1][1]
+			var maxMonth = monthsArray[monthsArray.length-1]
 			docLog('Identified last month.')
 			var returnList = [minMonth]
 			var currentMonth = new MonthDate(minMonth, language)
 			docLog('Iterating on first month...')
-			console.log(currentMonth)
 			while (currentMonth.toString() !== maxMonth) {
 				currentMonth = currentMonth.nextMonth()
-				returnList.push(currentMonth)
+				returnList.push(currentMonth.toString())
 			}
 			docLog('Timeline generated.')
 			return returnList
 		}
+	}
+
+	/*
+		CONTROLLER FUNCTIONS
+	*/
+
+	function executeController(fileContent, n, l) {
+		var content = contentProcess(fileContent, n, l)
+		processGraph(content.values, content.dates, content.names)
 	}
 
 	/*
@@ -196,6 +211,8 @@
 				color: '#00FF00'
 			})
 		})
+		console.log(nodes)
+		return nodes
 	}
 
 	function generateEdges (links, dates) {
@@ -206,7 +223,29 @@
 		Return:
 		Array of sigma-compatible edges
 		*/
-		return []
+		var edges = []
+		var j = 0
+		dates.forEach(function(d, i) {
+			if (i === 0) {
+				return
+			}
+			edges.push({
+				id: j++,
+				source: dates[i-1],
+				target: d,
+				size: 5000
+			})
+		})
+		links.forEach(function(d) {
+			edges.push({
+				id: j++,
+				source: d[0],
+				target: d[1],
+				size: 1
+			})
+		})
+		console.log(edges)
+		return edges
 	}
 
 	function processGraph (m, d, n) {
@@ -216,6 +255,9 @@
 			- d: Array of dates in the form ['Month YEAR', 'Month YEAR', ...]
 			- n: Set of names in the form ['Name NAME', 'Name NAME', ...]
 		*/
+		console.log(m)
+		console.log(d)
+		console.log(n)
 		var g = { nodes: generateNodes(d, n), edges: generateEdges(m, d) }
 		var s = new sigma({
 			graph: g,
@@ -228,6 +270,7 @@
 	*/
 
 	function docLog (n) {
+		console.log(n)
 		$('#notifications').append('<p>' + n + '</p>')
 	}
 
