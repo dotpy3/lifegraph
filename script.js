@@ -259,9 +259,18 @@
 		console.log(d)
 		console.log(n)
 		var g = { nodes: generateNodes(d, n), edges: generateEdges(m, d) }
+		$('#sigma-container').css('display', 'inline')
 		var s = new sigma({
 			graph: g,
 			container: 'sigma-container'
+		})
+		s.configForceAtlas2({
+			gravity: 40,
+			scaling: 800
+		})
+		s.killForceAtlas2({worker: true, barnesHutOptimize: false})
+		setTimeout(10000, function() {
+			s.stopForceAtlas2()
 		})
 	}
 
